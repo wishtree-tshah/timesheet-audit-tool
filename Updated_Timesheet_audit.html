@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timesheet Audit Tool</title>
+    <!-- Load Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load SheetJS for Excel/CSV parsing with fallback CDNs -->
+    <script>
+        // Try loading XLSX from multiple CDNs for better reliability
+        const cdnSources = [
+            'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
+            'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js',
+            'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
+        ];
+        
+        let currentCdnIndex = 0;
+        
+        function loadXLSX() {
+            if (currentCdnIndex >= cdnSources.length) {
+                console.error('Failed to load XLSX from all CDN sources');
+                return;
+            }
+            
+            const script = document.createElement('script');
+            script.src = cdnSources[currentCdnIndex];
+            script.async = false;
+            
+            script.onload = () => {
+                console.log(`XLSX loaded successfully from: ${cdnSources[currentCdnIndex]}`);
+            };
+            
+            script.onerror = () => {
+                console.warn(`Failed to load XLSX from: ${cdnSources[currentCdnIndex]}`);
+                currentCdnIndex++;
+                loadXLSX(); // Try next CDN
+            };
+            
+            document.head.appendChild(script);
+        }
+        
+        loadXLSX(); // Start loading
+    </script>
+    <style>
+        /* Modern custom styles */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        
+        .upload-area {
+            border: 3px dashed #cbd5e1;
+            transition: all 0.3s ease;
+        }
+        
+        .upload-area:hover, .upload-area.dragover {
+            border-color: #3b82f6;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.2);
+        }
+        
+        .upload-area.disabled {
+            opacity: 0.6;
+            pointer-events: none;
+            cursor: not-allowed;
+        }
+        
+        .empty-cell {
+            color: #9ca3af;
+            font-style: italic;
+            font-size: 0.875rem;
+        }
+        
+        .sortable, .sortable-combined {
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        
+        .sortable:hover, .sortable-combined:hover {
+            background-color: #e5e7eb;
+        }
+        
+        .sortable::after, .sortable-combined::after {
+            content: '⇅';
+            position: absolute;
+            right: 8px;
+            opacity: 0.3;
+            font-size: 0.75rem;
+        }
+        
+        .sortable.asc::after, .sortable-combined.asc::after {
+            content: '↑';
+            opacity: 1;
+            color: #3b82f6;
+        }
+        
+        .sortable.desc::after, .sortable-combined.desc::after {
+            content: '↓';
+            opacity: 1;
+            color: #3b82f6;
+        }
+        
+        .project-card {
+            transition: all 0.3s ease;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .project-card:hover {
+            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.15);
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            padding: 1.5rem;
+            color: white;
+            transition: transform 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-4px);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -5px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -5px rgba(245, 87, 108, 0.4);
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .loading-spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        table tbody tr {
+            transition: background-color 0.2s ease;
+        }
+        
+        table tbody tr:hover {
+            background-color: #f9fafb;
+        }
+        
+        /* Smooth scrollbar */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 5px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 min-h-screen p-4 md:p-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="text-center mb-8 fade-in">
+            <h1 class="text-5xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-3">
+                Timesheet Audit Tool
+            </h1>
+            <p class="text-gray-600 text-lg">Comprehensive multi-project timesheet analysis</p>
+        </div>
+
+        <!-- Info Banner -->
+        <div class="mb-8 bg-white border-l-4 border-blue-500 rounded-r-xl shadow-md p-5 fade-in">
+            <div class="flex items-start">
+                <div class="flex-shrink-0">
+                    <svg class="h-6 w-6 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <h3 class="text-sm font-semibold text-gray-900 mb-1">Getting Started</h3>
+                    <p class="text-sm text-gray-700">
+                        Upload your timesheet file (Excel or CSV) to instantly analyze billable hours, leave/holiday dates, 
+                        incomplete entries, and missing timesheets across all projects.
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- File Upload Area -->
+        <div class="mb-8 fade-in">
+            <label id="uploadLabel" for="fileInput" class="upload-area disabled p-12 rounded-2xl bg-white text-center cursor-pointer block shadow-lg">
+                <input type="file" id="fileInput" accept=".xls,.xlsx,.csv" class="hidden" />
+                <div id="uploadText" class="text-gray-600">
+                    <div class="loading-spinner mx-auto mb-4"></div>
+                    <p class="text-lg font-medium">Loading libraries, please wait...</p>
+                    <p class="text-sm text-gray-500 mt-2">Initializing file processor...</p>
+                </div>
+            </label>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loading" class="hidden text-center py-12">
+            <div class="loading-spinner mx-auto mb-4"></div>
+            <p class="text-xl font-medium text-gray-700">Processing your timesheet...</p>
+            <p class="text-sm text-gray-500 mt-2">Analyzing data across all projects</p>
+        </div>
+
+        <!-- Summary Statistics -->
+        <div id="summaryStats" class="hidden mb-8 grid grid-cols-1 md:grid-cols-4 gap-6">
+            <!-- Stats will be injected here -->
+        </div>
+
+        <!-- Action Buttons -->
+        <div id="actionButtons" class="hidden mb-6 flex justify-end space-x-3">
+            <button id="clearButton" class="btn-secondary text-white font-medium px-6 py-3 rounded-lg shadow-lg">
+                <span class="flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                    Clear Results
+                </span>
+            </button>
+            <button id="downloadCsvButton" class="btn-primary text-white font-medium px-6 py-3 rounded-lg shadow-lg">
+                <span class="flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Download CSV
+                </span>
+            </button>
+        </div>
+
+        <!-- Results Container -->
+        <div id="results" class="space-y-8">
+            <!-- Tables will be dynamically injected here -->
+        </div>
+    </div>
+
+    <script>
+        // --- Library Loading Check ---
+        
+        let xlsxLoaded = false;
+        let domReady = false;
+        let retryCount = 0;
+        const maxRetries = 50; // Try for 5 seconds (50 * 100ms)
+
+        const enableUploadArea = () => {
+            // Only enable when both XLSX is loaded AND DOM is ready
+            if (xlsxLoaded && domReady) {
+                const uploadLabel = document.getElementById('uploadLabel');
+                const uploadText = document.getElementById('uploadText');
+                
+                uploadLabel.classList.remove('disabled');
+                uploadText.innerHTML = `
+                    <svg class="mx-auto h-16 w-16 mb-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <p class="text-xl font-semibold text-gray-800 mb-2">Drop your timesheet here</p>
+                    <p class="text-sm text-gray-500 mb-1">or click to browse</p>
+                    <p class="text-xs text-gray-400 mt-3">Supported formats: Excel (.xls, .xlsx) and CSV (.csv)</p>
+                `;
+            }
+        };
+
+        const showLibraryError = () => {
+            const uploadLabel = document.getElementById('uploadLabel');
+            const uploadText = document.getElementById('uploadText');
+            
+            uploadLabel.classList.remove('disabled');
+            uploadText.innerHTML = `
+                <div class="text-center">
+                    <svg class="mx-auto h-16 w-16 mb-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <p class="text-xl font-semibold text-red-600 mb-4">Failed to Load Required Libraries</p>
+                    <div class="text-left max-w-md mx-auto bg-red-50 border-l-4 border-red-500 rounded-r-lg p-4 mb-4">
+                        <p class="text-sm font-semibold text-gray-800 mb-2">Possible causes:</p>
+                        <ul class="text-sm text-gray-700 list-disc list-inside space-y-1">
+                            <li>Internet connection issues</li>
+                            <li>Ad-blocker blocking CDN scripts</li>
+                            <li>Firewall or network restrictions</li>
+                            <li>Corporate proxy settings</li>
+                        </ul>
+                    </div>
+                    <div class="text-left max-w-md mx-auto bg-blue-50 border-l-4 border-blue-500 rounded-r-lg p-4 mb-4">
+                        <p class="text-sm font-semibold text-gray-800 mb-2">Try these solutions:</p>
+                        <ol class="text-sm text-gray-700 list-decimal list-inside space-y-1">
+                            <li>Check your internet connection</li>
+                            <li>Disable ad-blockers temporarily</li>
+                            <li>Open browser console (F12) for details</li>
+                            <li>Try incognito mode or different browser</li>
+                        </ol>
+                    </div>
+                    <button onclick="location.reload()" class="btn-primary text-white font-medium px-6 py-3 rounded-lg shadow-lg">
+                        Retry Loading
+                    </button>
+                </div>
+            `;
+        };
+
+        const checkXLSX = () => {
+            if (typeof XLSX !== 'undefined') {
+                xlsxLoaded = true;
+                enableUploadArea(); // Try to enable (will only work if DOM is also ready)
+            } else if (retryCount < maxRetries) {
+                retryCount++;
+                setTimeout(checkXLSX, 100); // Re-check after 100ms
+            } else {
+                showLibraryError();
+            }
+        };
+        
+        checkXLSX(); // Initial call
+
+        document.addEventListener('DOMContentLoaded', () => {
+            domReady = true;
+            enableUploadArea(); // Try to enable (will only work if XLSX is also loaded)
+            const fileInput = document.getElementById('fileInput');
+            const resultsContainer = document.getElementById('results');
+            const loadingIndicator = document.getElementById('loading');
+            const summaryStats = document.getElementById('summaryStats');
+            const actionButtons = document.getElementById('actionButtons');
+
+            // --- Utility Functions ---
+
+            const formatDate = (date) => {
+                if (!(date instanceof Date) || isNaN(date)) return 'Invalid Date';
+                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                const day = date.getDate();
+                return `${day} ${months[date.getMonth()]} ${date.getFullYear()}`;
+            };
+
+            const parseExcelDate = (excelDate) => {
+                if (excelDate instanceof Date) return excelDate;
+                
+                // Handle Excel numeric dates
+                if (typeof excelDate === 'number') {
+                    const epochDiff = excelDate > 60 ? 25569 : 25568;
+                    return new Date(Math.round((excelDate - epochDiff) * 86400 * 1000));
+                }
+                
+                // Handle string dates
+                if (typeof excelDate === 'string') {
+                    const trimmed = excelDate.trim();
+                    
+                    // Try to parse DD-MM-YYYY format (e.g., "01-10-2025")
+                    const ddmmyyyyMatch = trimmed.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+                    if (ddmmyyyyMatch) {
+                        const day = parseInt(ddmmyyyyMatch[1], 10);
+                        const month = parseInt(ddmmyyyyMatch[2], 10) - 1; // Months are 0-indexed
+                        const year = parseInt(ddmmyyyyMatch[3], 10);
+                        const date = new Date(year, month, day);
+                        if (!isNaN(date)) return date;
+                    }
+                    
+                    // Try to parse DD/MM/YYYY format (e.g., "01/10/2025")
+                    const ddmmyyyySlashMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+                    if (ddmmyyyySlashMatch) {
+                        const day = parseInt(ddmmyyyySlashMatch[1], 10);
+                        const month = parseInt(ddmmyyyySlashMatch[2], 10) - 1;
+                        const year = parseInt(ddmmyyyySlashMatch[3], 10);
+                        const date = new Date(year, month, day);
+                        if (!isNaN(date)) return date;
+                    }
+                    
+                    // Try ISO format or other standard formats
+                    const date = new Date(trimmed);
+                    if (!isNaN(date)) return date;
+                }
+                
+                return new Date(NaN);
+            };
+
+            const parseFloatSafe = (value) => {
+                const num = parseFloat(value);
+                return isNaN(num) ? 0 : num;
+            };
+
+            const formatDateList = (dateSet) => {
+                if (!dateSet || dateSet.size === 0) return '<span class="empty-cell">(None)</span>';
+                return Array.from(dateSet).sort((a, b) => {
+                    const dateStrA = a.split(' (')[0];
+                    const dateStrB = b.split(' (')[0];
+                    const dateA = new Date(dateStrA);
+                    const dateB = new Date(dateStrB);
+                    return dateA - dateB;
+                }).join('<br/>');
+            };
+
+            // --- Data Processing (Multi-Pass as per specification) ---
+
+            const processTimesheetData = (data) => {
+                // Pass 0: Global Data Scan
+                const allUsers = new Set();
+                const userLogbook = new Map();
+                let minDate = new Date(8640000000000000);
+                let maxDate = new Date(-8640000000000000);
+
+                for (const row of data) {
+                    const user = String(row['User'] || '').trim();
+                    const date = parseExcelDate(row['Date']);
+
+                    if (!user || isNaN(date)) continue;
+
+                    allUsers.add(user);
+                    
+                    if (date < minDate) minDate = date;
+                    if (date > maxDate) maxDate = date;
+
+                    if (!userLogbook.has(user)) userLogbook.set(user, new Set());
+                    userLogbook.get(user).add(formatDate(date));
+                }
+
+                // Pass 1: Calculate Daily Work Totals
+                const dailyUserTotals = new Map();
+                
+                for (const row of data) {
+                    const user = String(row['User'] || '').trim();
+                    const date = parseExcelDate(row['Date']);
+                    const clientClaim = parseFloatSafe(row['Client Claim Daily Log']);
+                    const taskType = String(row['Task/General/Issue'] || '').trim();
+
+                    if (taskType !== 'Holiday' && taskType !== 'Leave' && user && !isNaN(date) && clientClaim > 0) {
+                        const dateStr = formatDate(date);
+                        const key = `${user}_${dateStr}`;
+                        dailyUserTotals.set(key, (dailyUserTotals.get(key) || 0) + clientClaim);
+                    }
+                }
+
+                // Pass 2: Aggregate Project-Specific Data
+                const projectSummaries = new Map();
+                const projectIds = new Map(); // Map to store Project ID for each project
+
+                for (const row of data) {
+                    const user = String(row['User'] || '').trim();
+                    const project = String(row['Project Name'] || '').trim();
+                    const projectId = String(row['Project ID'] || '').trim();
+                    const date = parseExcelDate(row['Date']);
+                    const clientClaim = parseFloatSafe(row['Client Claim Daily Log']);
+                    const taskType = String(row['Task/General/Issue'] || '').trim();
+
+                    if (!user || !project || isNaN(date)) continue;
+
+                    // Store project ID
+                    if (projectId && !projectIds.has(project)) {
+                        projectIds.set(project, projectId);
+                    }
+
+                    // Initialize project map if needed
+                    if (!projectSummaries.has(project)) {
+                        projectSummaries.set(project, new Map());
+                    }
+
+                    // Initialize user in project if needed
+                    if (!projectSummaries.get(project).has(user)) {
+                        projectSummaries.get(project).set(user, {
+                            user,
+                            projectId: projectId,
+                            totalClientHours: 0,
+                            leaveDates: new Set(),
+                            holidayDates: new Set()
+                        });
+                    }
+
+                    const userSummary = projectSummaries.get(project).get(user);
+
+                    if (taskType === 'Leave') {
+                        userSummary.leaveDates.add(formatDate(date));
+                    } else if (taskType === 'Holiday') {
+                        userSummary.holidayDates.add(formatDate(date));
+                    } else {
+                        userSummary.totalClientHours += clientClaim;
+                    }
+                }
+
+                // Pass 3: Final Consolidation and Mapping
+                
+                // Calculate missing dates for each user (global)
+                const userMissingDates = new Map();
+                for (const user of allUsers) {
+                    const missingDates = new Set();
+                    for (let d = new Date(minDate); d <= maxDate; d.setDate(d.getDate() + 1)) {
+                        const dayOfWeek = d.getDay();
+                        if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Not weekend
+                            const dateStr = formatDate(new Date(d));
+                            if (!userLogbook.get(user).has(dateStr)) {
+                                missingDates.add(dateStr);
+                            }
+                        }
+                    }
+                    userMissingDates.set(user, missingDates);
+                }
+
+                // Calculate < 8 hour dates for each user (global)
+                const userShortHourDates = new Map();
+                for (const [key, totalHours] of dailyUserTotals.entries()) {
+                    if (totalHours > 0 && totalHours < 8) {
+                        const [user, ...dateParts] = key.split('_');
+                        const dateStr = dateParts.join('_');
+                        if (!userShortHourDates.has(user)) {
+                            userShortHourDates.set(user, new Set());
+                        }
+                        userShortHourDates.get(user).add(`${dateStr} (${totalHours.toFixed(1)})`);
+                    }
+                }
+
+                // Merge global data into project summaries
+                for (const [project, userMap] of projectSummaries.entries()) {
+                    for (const [user, summary] of userMap.entries()) {
+                        summary.missingDates = userMissingDates.get(user) || new Set();
+                        summary.shortHourDates = userShortHourDates.get(user) || new Set();
+                    }
+                }
+
+                return { projectSummaries, projectIds };
+            };
+
+            // --- UI Generation ---
+
+            const generateSummaryStats = (projectSummaries) => {
+                let totalProjects = projectSummaries.size;
+                let totalUsers = new Set();
+                let totalHours = 0;
+                let totalIssues = 0;
+
+                for (const [project, userMap] of projectSummaries.entries()) {
+                    for (const [user, summary] of userMap.entries()) {
+                        totalUsers.add(user);
+                        totalHours += summary.totalClientHours;
+                        totalIssues += summary.missingDates.size + summary.shortHourDates.size;
+                    }
+                }
+
+                return `
+                    <div class="stat-card fade-in">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium opacity-90">Total Projects</p>
+                                <p class="text-3xl font-bold mt-1">${totalProjects}</p>
+                            </div>
+                            <svg class="w-12 h-12 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="stat-card fade-in" style="animation-delay: 0.1s; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium opacity-90">Total Users</p>
+                                <p class="text-3xl font-bold mt-1">${totalUsers.size}</p>
+                            </div>
+                            <svg class="w-12 h-12 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="stat-card fade-in" style="animation-delay: 0.2s; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium opacity-90">Total Hours</p>
+                                <p class="text-3xl font-bold mt-1">${totalHours.toFixed(0)}</p>
+                            </div>
+                            <svg class="w-12 h-12 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="stat-card fade-in" style="animation-delay: 0.3s; background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium opacity-90">Issues Found</p>
+                                <p class="text-3xl font-bold mt-1">${totalIssues}</p>
+                            </div>
+                            <svg class="w-12 h-12 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                `;
+            };
+
+            const generateCombinedSummaryTable = (projectSummaries, projectIds) => {
+                // Create a flat array of all user-project combinations
+                const allEntries = [];
+                
+                for (const [project, userMap] of projectSummaries.entries()) {
+                    const projectId = projectIds.get(project) || '';
+                    for (const [user, summary] of userMap.entries()) {
+                        allEntries.push({
+                            projectId: projectId,
+                            projectName: project,
+                            userName: summary.user,
+                            totalHours: summary.totalClientHours,
+                            totalDays: summary.totalClientHours / 8
+                        });
+                    }
+                }
+                
+                // Sort by project ID, then project name, then user name
+                allEntries.sort((a, b) => {
+                    if (a.projectId !== b.projectId) return a.projectId.localeCompare(b.projectId);
+                    if (a.projectName !== b.projectName) return a.projectName.localeCompare(b.projectName);
+                    return a.userName.localeCompare(b.userName);
+                });
+                
+                let tableRowsHTML = '';
+                for (const entry of allEntries) {
+                    const projectDisplay = entry.projectId 
+                        ? `${entry.projectId} - ${entry.projectName}` 
+                        : entry.projectName;
+                    
+                    tableRowsHTML += `
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-3 text-sm font-medium text-gray-900">${projectDisplay}</td>
+                            <td class="px-6 py-3 text-sm text-gray-700">${entry.userName}</td>
+                            <td class="px-6 py-3 text-sm text-gray-700 text-right">${entry.totalHours.toFixed(2)}</td>
+                            <td class="px-6 py-3 text-sm text-gray-700 text-right">${entry.totalDays.toFixed(2)}</td>
+                        </tr>
+                    `;
+                }
+                
+                return `
+                    <div class="project-card shadow-lg mb-8 fade-in">
+                        <div class="px-6 py-5 bg-gradient-to-r from-green-600 to-teal-600">
+                            <h2 class="text-2xl font-bold text-white flex items-center">
+                                <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                Combined Summary - All Projects
+                            </h2>
+                            <p class="text-green-100 text-sm mt-1">Easy copy-paste format for reporting</p>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table id="combinedSummaryTable" class="min-w-full table-auto">
+                                <thead class="bg-gray-100 border-b-2 border-gray-200">
+                                    <tr>
+                                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider sortable-combined" data-column="0">
+                                            Project ID - Project Name
+                                        </th>
+                                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider sortable-combined" data-column="1">
+                                            User Name
+                                        </th>
+                                        <th class="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider sortable-combined" data-column="2">
+                                            Total Hours
+                                        </th>
+                                        <th class="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider sortable-combined" data-column="3">
+                                            Total Days
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    ${tableRowsHTML}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
+                            <button id="copyCombinedButton" class="bg-green-600 hover:bg-green-700 text-white font-medium px-4 py-2 rounded-lg transition-colors">
+                                <span class="flex items-center">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+                                    </svg>
+                                    Copy Table to Clipboard
+                                </span>
+                            </button>
+                            <span id="copyStatus" class="ml-3 text-sm text-gray-600"></span>
+                        </div>
+                    </div>
+                `;
+            };
+
+            const generateResultsHTML = (projectSummaries, projectIds) => {
+                const sortedProjects = Array.from(projectSummaries.keys()).sort();
+                let allTablesHTML = '';
+
+                sortedProjects.forEach((project, index) => {
+                    const userMap = projectSummaries.get(project);
+                    const sortedUsers = Array.from(userMap.values()).sort((a, b) => a.user.localeCompare(b.user));
+
+                    let tableRowsHTML = '';
+                    for (const summary of sortedUsers) {
+                        tableRowsHTML += `
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">${summary.user}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-medium">${summary.totalClientHours.toFixed(2)}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-medium">${(summary.totalClientHours / 8).toFixed(2)}</td>
+                                <td class="px-6 py-4 text-sm text-gray-600">${formatDateList(summary.leaveDates)}</td>
+                                <td class="px-6 py-4 text-sm text-gray-600">${formatDateList(summary.holidayDates)}</td>
+                                <td class="px-6 py-4 text-sm text-gray-600">${formatDateList(summary.shortHourDates)}</td>
+                                <td class="px-6 py-4 text-sm text-gray-600">${formatDateList(summary.missingDates)}</td>
+                            </tr>
+                        `;
+                    }
+
+                    allTablesHTML += `
+                        <div class="project-card shadow-lg fade-in" style="animation-delay: ${index * 0.1}s;">
+                            <div class="px-6 py-5 bg-gradient-to-r from-blue-600 to-purple-600">
+                                <h2 class="text-2xl font-bold text-white flex items-center">
+                                    <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                                    </svg>
+                                    Project: ${project}
+                                </h2>
+                                <p class="text-blue-100 text-sm mt-1">${sortedUsers.length} team member${sortedUsers.length !== 1 ? 's' : ''}</p>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full table-auto project-table">
+                                    <thead class="bg-gray-100 border-b-2 border-gray-200">
+                                        <tr>
+                                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider sortable" data-column="0">
+                                                User
+                                            </th>
+                                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider sortable" data-column="1">
+                                                Total Client Hours
+                                            </th>
+                                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider sortable" data-column="2">
+                                                Total Days
+                                            </th>
+                                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                                Leave Dates
+                                            </th>
+                                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                                Holiday Dates
+                                            </th>
+                                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                                Dates with &lt; 8 Hours
+                                            </th>
+                                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                                Missing Timesheet Dates
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        ${tableRowsHTML}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                return allTablesHTML;
+            };
+
+            // --- File Processing ---
+
+            const processFile = (file) => {
+                // Safety check: Ensure XLSX library is loaded
+                if (typeof XLSX === 'undefined') {
+                    alert('Excel library is still loading. Please wait a moment and try again.');
+                    return;
+                }
+
+                resultsContainer.innerHTML = '';
+                summaryStats.innerHTML = '';
+                summaryStats.classList.add('hidden');
+                actionButtons.classList.add('hidden');
+                loadingIndicator.classList.remove('hidden');
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array', cellDates: true, dateNF: 'yyyy-mm-dd', raw: false });
+                        if (!workbook.SheetNames || workbook.SheetNames.length === 0) throw new Error('No sheets found in the Excel file');
+                        
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        if (!firstSheet) throw new Error('First sheet is empty');
+
+                        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { raw: false, dateNF: 'yyyy-mm-dd' });
+                        if (!jsonData || jsonData.length === 0) throw new Error('No data found in the sheet');
+
+                        const requiredColumns = ['Project Name', 'User', 'Date', 'Client Claim Daily Log', 'Task/General/Issue'];
+                        const missingColumns = requiredColumns.filter(col => !Object.keys(jsonData[0]).some(key => key === col));
+                        if (missingColumns.length > 0) throw new Error(`Missing required columns: ${missingColumns.join(', ')}`);
+
+                        const { projectSummaries, projectIds } = processTimesheetData(jsonData);
+                        
+                        summaryStats.innerHTML = generateSummaryStats(projectSummaries);
+                        summaryStats.classList.remove('hidden');
+                        
+                        // Display combined summary table first, then detailed tables
+                        resultsContainer.innerHTML = generateCombinedSummaryTable(projectSummaries, projectIds) + 
+                                                      generateResultsHTML(projectSummaries, projectIds);
+                        actionButtons.classList.remove('hidden');
+                        
+                        addEventListenersToResults(projectSummaries, projectIds);
+
+                    } catch (error) {
+                        resultsContainer.innerHTML = `
+                            <div class="bg-white border-l-4 border-red-500 rounded-r-xl shadow-lg p-6 fade-in">
+                                <div class="flex">
+                                    <div class="flex-shrink-0">
+                                        <svg class="h-6 w-6 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                    </div>
+                                    <div class="ml-3">
+                                        <h3 class="text-lg font-semibold text-red-800">Error Processing File</h3>
+                                        <div class="mt-2 text-sm text-red-700">
+                                            <p>${error.message}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    } finally {
+                        loadingIndicator.classList.add('hidden');
+                        isProcessing = false; // Reset the processing flag
+                        fileInput.value = ''; // Clear file input to allow re-uploading same file
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            };
+
+            // --- Event Listeners ---
+
+            const addEventListenersToResults = (projectSummaries, projectIds) => {
+                document.getElementById('clearButton')?.addEventListener('click', () => {
+                    resultsContainer.innerHTML = '';
+                    summaryStats.innerHTML = '';
+                    summaryStats.classList.add('hidden');
+                    actionButtons.classList.add('hidden');
+                    fileInput.value = '';
+                    isProcessing = false; // Reset the processing flag
+                });
+
+                // Copy combined table to clipboard
+                document.getElementById('copyCombinedButton')?.addEventListener('click', () => {
+                    const table = document.getElementById('combinedSummaryTable');
+                    const rows = table.querySelectorAll('tbody tr');
+                    let textContent = '';
+                    
+                    rows.forEach(row => {
+                        const cells = row.querySelectorAll('td');
+                        const rowData = Array.from(cells).map(cell => cell.innerText.trim()).join(' | ');
+                        textContent += rowData + '\n';
+                    });
+                    
+                    navigator.clipboard.writeText(textContent).then(() => {
+                        const statusEl = document.getElementById('copyStatus');
+                        statusEl.textContent = '✓ Copied to clipboard!';
+                        statusEl.className = 'ml-3 text-sm text-green-600 font-medium';
+                        setTimeout(() => {
+                            statusEl.textContent = '';
+                        }, 3000);
+                    }).catch(err => {
+                        const statusEl = document.getElementById('copyStatus');
+                        statusEl.textContent = '✗ Failed to copy';
+                        statusEl.className = 'ml-3 text-sm text-red-600 font-medium';
+                    });
+                });
+
+                // Sorting for combined summary table
+                document.querySelectorAll('#combinedSummaryTable .sortable-combined').forEach(header => {
+                    header.addEventListener('click', () => {
+                        const table = header.closest('table');
+                        const tbody = table.querySelector('tbody');
+                        const column = parseInt(header.dataset.column);
+                        const rows = Array.from(tbody.querySelectorAll('tr'));
+                        
+                        // Remove sorting classes from all headers in this table
+                        table.querySelectorAll('.sortable-combined').forEach(h => {
+                            if (h !== header) {
+                                h.classList.remove('asc', 'desc');
+                            }
+                        });
+                        
+                        // Toggle between asc and desc
+                        const isAsc = !header.classList.contains('asc');
+                        header.classList.remove('asc', 'desc');
+                        header.classList.add(isAsc ? 'asc' : 'desc');
+                        
+                        rows.sort((a, b) => {
+                            const aText = a.cells[column].innerText;
+                            const bText = b.cells[column].innerText;
+                            return isAsc ? aText.localeCompare(bText, undefined, {numeric: true}) : bText.localeCompare(aText, undefined, {numeric: true});
+                        });
+
+                        rows.forEach(row => tbody.appendChild(row));
+                    });
+                });
+
+                document.getElementById('downloadCsvButton')?.addEventListener('click', () => {
+                    let csvContent = '';
+                    
+                    const sortedProjects = Array.from(projectSummaries.keys()).sort();
+                    for (const project of sortedProjects) {
+                        const userMap = projectSummaries.get(project);
+                        const sortedUsers = Array.from(userMap.values()).sort((a, b) => a.user.localeCompare(b.user));
+                        
+                        csvContent += `\nProject: ${project}\n`;
+                        csvContent += 'User,Total Client Hours,Total Days,Leave Dates,Holiday Dates,Dates with < 8 Hours,Missing Timesheet Dates\n';
+                        
+                        for (const summary of sortedUsers) {
+                            const formatForCsv = (set) => {
+                                if (!set || set.size === 0) return '(None)';
+                                return Array.from(set).sort((a, b) => {
+                                    const dateStrA = a.split(' (')[0];
+                                    const dateStrB = b.split(' (')[0];
+                                    const dateA = new Date(dateStrA);
+                                    const dateB = new Date(dateStrB);
+                                    return dateA - dateB;
+                                }).join('; ');
+                            };
+                            
+                            csvContent += `"${summary.user}",${summary.totalClientHours.toFixed(2)},${(summary.totalClientHours / 8).toFixed(2)},"${formatForCsv(summary.leaveDates)}","${formatForCsv(summary.holidayDates)}","${formatForCsv(summary.shortHourDates)}","${formatForCsv(summary.missingDates)}"\n`;
+                        }
+                    }
+                    
+                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.setAttribute('download', 'timesheet_audit_report.csv');
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                });
+
+                document.querySelectorAll('.project-table .sortable').forEach(header => {
+                    header.addEventListener('click', () => {
+                        const table = header.closest('table');
+                        const tbody = table.querySelector('tbody');
+                        const column = parseInt(header.dataset.column);
+                        const rows = Array.from(tbody.querySelectorAll('tr'));
+                        
+                        // Remove sorting classes from all headers in this table
+                        table.querySelectorAll('.sortable').forEach(h => {
+                            if (h !== header) {
+                                h.classList.remove('asc', 'desc');
+                            }
+                        });
+                        
+                        // Toggle between asc and desc
+                        const isAsc = !header.classList.contains('asc');
+                        header.classList.remove('asc', 'desc');
+                        header.classList.add(isAsc ? 'asc' : 'desc');
+                        
+                        rows.sort((a, b) => {
+                            const aText = a.cells[column].innerText;
+                            const bText = b.cells[column].innerText;
+                            return isAsc ? aText.localeCompare(bText, undefined, {numeric: true}) : bText.localeCompare(aText, undefined, {numeric: true});
+                        });
+
+                        rows.forEach(row => tbody.appendChild(row));
+                    });
+                });
+            };
+
+            let isProcessing = false;
+
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files[0] && !isProcessing) {
+                    isProcessing = true;
+                    processFile(e.target.files[0]);
+                }
+            });
+
+            // The label's 'for' attribute handles clicks automatically, so we just prevent disabled clicks
+            uploadLabel.addEventListener('click', (e) => {
+                if (uploadLabel.classList.contains('disabled') || isProcessing) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            });
+            
+            uploadLabel.addEventListener('dragover', (e) => { 
+                e.preventDefault(); 
+                if (!uploadLabel.classList.contains('disabled')) {
+                    uploadLabel.classList.add('dragover'); 
+                }
+            });
+            
+            uploadLabel.addEventListener('dragleave', () => {
+                uploadLabel.classList.remove('dragover');
+            });
+            
+            uploadLabel.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                uploadLabel.classList.remove('dragover');
+                if (!uploadLabel.classList.contains('disabled') && !isProcessing && e.dataTransfer.files[0]) {
+                    isProcessing = true;
+                    fileInput.files = e.dataTransfer.files;
+                    processFile(e.dataTransfer.files[0]);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
