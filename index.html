@@ -251,6 +251,17 @@
             </div>
         </div>
 
+        <div class="mb-6 flex flex-col gap-3 rounded-xl border border-indigo-100 bg-white p-5 shadow-md sm:flex-row sm:items-center sm:justify-between fade-in">
+            <div>
+                <h2 class="text-base font-semibold text-gray-900">Project directory</h2>
+                <p class="mt-1 text-sm text-gray-600">Keep client contacts, recipient emails, aliases, and resource roles up to date.</p>
+            </div>
+            <button type="button" id="manageDirectoryButton"
+                class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                Manage project directory
+            </button>
+        </div>
+
         <!-- File Upload Area -->
         <div class="mb-8 fade-in">
             <label id="uploadLabel" for="fileInput"
@@ -330,9 +341,76 @@
         </div>
     </div>
 
+    <div id="directoryModal" class="fixed inset-0 z-50 hidden overflow-y-auto bg-gray-900/60 p-4" role="dialog"
+        aria-modal="true" aria-labelledby="directoryModalTitle">
+        <div class="mx-auto my-4 max-w-4xl rounded-2xl bg-white shadow-2xl sm:my-10">
+            <div class="flex items-start justify-between border-b border-gray-200 p-6">
+                <div>
+                    <h2 id="directoryModalTitle" class="text-2xl font-bold text-gray-900">Project directory details</h2>
+                    <p id="directoryModalMessage" class="mt-1 text-sm text-gray-600">Select a project to update, or add a new one.</p>
+                </div>
+                <button type="button" id="closeDirectoryModal" aria-label="Close project directory"
+                    class="rounded-md px-3 py-1 text-2xl leading-none text-gray-500 hover:bg-gray-100 hover:text-gray-800">&times;</button>
+            </div>
+
+            <form id="directoryForm" class="space-y-6 p-6">
+                <div>
+                    <label for="directoryProjectSelect" class="mb-1 block text-sm font-semibold text-gray-700">Project to edit</label>
+                    <select id="directoryProjectSelect" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"></select>
+                </div>
+
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                        <label for="directoryProjectName" class="mb-1 block text-sm font-semibold text-gray-700">Project display name *</label>
+                        <input id="directoryProjectName" required class="w-full rounded-lg border border-gray-300 px-3 py-2.5 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+                    </div>
+                    <div>
+                        <label for="directoryProjectId" class="mb-1 block text-sm font-semibold text-gray-700">Project ID</label>
+                        <input id="directoryProjectId" placeholder="e.g. PR-220" class="w-full rounded-lg border border-gray-300 px-3 py-2.5 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+                    </div>
+                    <div>
+                        <label for="directoryClientPoc" class="mb-1 block text-sm font-semibold text-gray-700">Client POC / greeting name *</label>
+                        <input id="directoryClientPoc" required placeholder="e.g. Suresh" class="w-full rounded-lg border border-gray-300 px-3 py-2.5 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+                    </div>
+                    <div>
+                        <label for="directoryClientEmail" class="mb-1 block text-sm font-semibold text-gray-700">To email *</label>
+                        <input id="directoryClientEmail" type="email" required placeholder="client@example.com" class="w-full rounded-lg border border-gray-300 px-3 py-2.5 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="directoryCcEmails" class="mb-1 block text-sm font-semibold text-gray-700">CC emails</label>
+                        <input id="directoryCcEmails" type="email" multiple placeholder="one@example.com, two@example.com" class="w-full rounded-lg border border-gray-300 px-3 py-2.5 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+                        <p class="mt-1 text-xs text-gray-500">Separate multiple addresses with commas.</p>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="directoryAliases" class="mb-1 block text-sm font-semibold text-gray-700">Excel project-name aliases</label>
+                        <input id="directoryAliases" placeholder="Alias one, PR-220 - Project name" class="w-full rounded-lg border border-gray-300 px-3 py-2.5 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+                    </div>
+                </div>
+
+                <div>
+                    <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                            <h3 class="text-base font-semibold text-gray-900">Resources and email-table roles</h3>
+                            <p class="text-xs text-gray-500">Names found in the latest timesheet are added automatically.</p>
+                        </div>
+                        <button type="button" id="addDirectoryResource" class="rounded-lg border border-indigo-300 px-3 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50">+ Add resource</button>
+                    </div>
+                    <div id="directoryResources" class="space-y-3"></div>
+                </div>
+
+                <div id="directoryFormStatus" class="hidden rounded-lg p-3 text-sm" role="status" aria-live="polite"></div>
+                <div class="flex flex-col-reverse gap-3 border-t border-gray-200 pt-5 sm:flex-row sm:justify-end">
+                    <button type="button" id="cancelDirectoryEdit" class="rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50">Cancel</button>
+                    <button type="submit" class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Save directory details</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         /**
-         * Project / client / resource directory (static).
+         * Default project / client / resource directory.
+         * Browser-managed updates are stored in localStorage and replace these defaults for that browser.
          * `projectName` is used in client emails (display name).
          * `excelAliases`: optional extra strings that may appear in the Excel "Project Name" column for the same project.
          * Matching ignores case and extra spaces.
@@ -340,8 +418,9 @@
          * Canonical names match PR ID mapping (see PROJECT_ID_TO_DISPLAY_NAME below).
          * Liz Product Appreciation: add `resources` when you have names/roles; empty list still generates an email with a zeroed table if that project appears in the file.
          */
-        const PROJECT_CLIENT_DIRECTORY = [
+        const DEFAULT_PROJECT_CLIENT_DIRECTORY = [
             {
+                projectId: 'PR-168',
                 projectName: 'Multiverz | Challenge One Platform',
                 excelAliases: ['Multiverz', 'PR-168 - Multiverz'],
                 clientPoc: 'Randeep Sir',
@@ -356,6 +435,7 @@
                 ]
             },
             {
+                projectId: 'PR-193',
                 projectName: 'Xactly – Incent Functionalities',
                 excelAliases: [
                     'Incent Functionalities',
@@ -370,6 +450,7 @@
                 ]
             },
             {
+                projectId: 'PR-205',
                 projectName: 'Sixscape Communications - ID Central Phase 2',
                 excelAliases: ['ID Central Phase 2', 'Sixscape', 'PR-205 - Sixscape'],
                 clientPoc: 'Suresh',
@@ -382,6 +463,7 @@
                 ]
             },
             {
+                projectId: 'PR-210',
                 projectName: 'Cydra Social',
                 excelAliases: ['PR-210 - Cydra Social'],
                 clientPoc: 'Chris',
@@ -398,12 +480,14 @@
                 ]
             },
             {
+                projectId: 'PR-216',
                 projectName: 'Liz Product Appreciation',
                 excelAliases: ['PR-216 - Liz Product Appreciation'],
                 clientPoc: 'Christina',
                 resources: [{ name: 'Tanmay', role: 'Scrum Master' }]
             },
             {
+                projectId: 'PR-69',
                 projectName: 'Xactly - OBERO SPM',
                 excelAliases: ['OBERO SPM', 'Obero SPM', 'PR-69 - Obero SPM', 'PR-69 - OBERO SPM'],
                 clientPoc: 'Suresh',
@@ -417,6 +501,77 @@
                 ]
             }
         ];
+
+        const DIRECTORY_STORAGE_KEY = 'timesheetAudit.projectClientDirectory.v1';
+
+        function sanitizeDirectoryEntry(entry) {
+            const splitEmailsOrAliases = (value) => Array.isArray(value)
+                ? value
+                : String(value || '').split(',');
+            return {
+                projectId: String(entry?.projectId || '').trim(),
+                projectName: String(entry?.projectName || '').trim(),
+                excelAliases: splitEmailsOrAliases(entry?.excelAliases).map((v) => String(v).trim()).filter(Boolean),
+                clientPoc: String(entry?.clientPoc || '').trim(),
+                clientEmail: String(entry?.clientEmail || '').trim(),
+                ccEmails: splitEmailsOrAliases(entry?.ccEmails).map((v) => String(v).trim()).filter(Boolean),
+                resources: Array.isArray(entry?.resources)
+                    ? entry.resources
+                        .map((resource) => ({
+                            name: String(resource?.name || '').trim(),
+                            role: String(resource?.role || '').trim()
+                        }))
+                        .filter((resource) => resource.name)
+                    : []
+            };
+        }
+
+        function loadProjectClientDirectory() {
+            try {
+                const stored = JSON.parse(localStorage.getItem(DIRECTORY_STORAGE_KEY));
+                if (Array.isArray(stored)) {
+                    const entries = stored.map(sanitizeDirectoryEntry).filter((entry) => entry.projectName);
+                    if (entries.length > 0) return entries;
+                }
+            } catch (error) {
+                console.warn('[Timesheet Audit] Could not load the saved project directory.', error);
+            }
+            return DEFAULT_PROJECT_CLIENT_DIRECTORY.map(sanitizeDirectoryEntry);
+        }
+
+        let PROJECT_CLIENT_DIRECTORY = loadProjectClientDirectory();
+
+        function saveProjectClientDirectory() {
+            localStorage.setItem(DIRECTORY_STORAGE_KEY, JSON.stringify(PROJECT_CLIENT_DIRECTORY));
+        }
+
+        /**
+         * Manual edits made to an email draft's resource table (add/remove/rename/hours) are saved
+         * here, keyed by canonical project + month-year, so they survive a re-upload or a directory
+         * save in this browser. Nothing here is written back to the repo/server — GitHub Pages is
+         * static hosting, so this is browser-local storage only (see DIRECTORY_STORAGE_KEY above).
+         */
+        const EMAIL_DRAFT_OVERRIDES_STORAGE_KEY = 'timesheetAudit.emailDraftOverrides.v1';
+
+        function loadEmailDraftOverrides() {
+            try {
+                const stored = JSON.parse(localStorage.getItem(EMAIL_DRAFT_OVERRIDES_STORAGE_KEY));
+                if (stored && typeof stored === 'object' && !Array.isArray(stored)) return stored;
+            } catch (error) {
+                console.warn('[Timesheet Audit] Could not load saved email draft edits.', error);
+            }
+            return {};
+        }
+
+        let EMAIL_DRAFT_OVERRIDES = loadEmailDraftOverrides();
+
+        function saveEmailDraftOverrides() {
+            localStorage.setItem(EMAIL_DRAFT_OVERRIDES_STORAGE_KEY, JSON.stringify(EMAIL_DRAFT_OVERRIDES));
+        }
+
+        function getEmailDraftKey(canonicalProjectName, monthYearLabel) {
+            return `${normalizeDirectoryString(canonicalProjectName)}::${normalizeDirectoryString(monthYearLabel)}`;
+        }
 
         /**
          * Excel "Project ID" → canonical project name (tables, emails, directory).
@@ -447,6 +602,10 @@
         function tryResolveCanonicalByProjectId(projectIdRaw) {
             const key = normalizePrIdToMapKey(projectIdRaw);
             if (!key) return null;
+            const savedEntry = PROJECT_CLIENT_DIRECTORY.find(
+                (entry) => normalizePrIdToMapKey(entry.projectId) === key
+            );
+            if (savedEntry) return savedEntry.projectName;
             if (Object.prototype.hasOwnProperty.call(PROJECT_ID_TO_DISPLAY_NAME, key)) {
                 return PROJECT_ID_TO_DISPLAY_NAME[key];
             }
@@ -613,9 +772,10 @@
             return false;
         }
 
-        function collectDirectoryMismatches(projectSummaries) {
+        function collectDirectoryMismatches(projectSummaries, projectIds) {
             const projectsMissingFromDirectory = [];
             const projectsWithUnknownUsers = [];
+            const projectsMissingEmailDetails = [];
 
             for (const [excelProjectName, userMap] of projectSummaries.entries()) {
                 const dirEntry = getDirectoryEntryForProjectKey(excelProjectName);
@@ -626,9 +786,21 @@
                 if (!dirEntry) {
                     projectsMissingFromDirectory.push({
                         excelProjectName,
+                        projectId: projectIds?.get(excelProjectName) || '',
                         usersInTimesheet: [...usersInExcel].sort((a, b) => a.localeCompare(b))
                     });
                     continue;
+                }
+
+                if (!dirEntry.clientPoc || !dirEntry.clientEmail) {
+                    projectsMissingEmailDetails.push({
+                        excelProjectName,
+                        directoryProjectName: dirEntry.projectName,
+                        missingFields: [
+                            ...(!dirEntry.clientPoc ? ['client POC'] : []),
+                            ...(!dirEntry.clientEmail ? ['To email'] : [])
+                        ]
+                    });
                 }
 
                 const unknownUsers = usersInExcel.filter((u) => !isExcelUserInProjectResources(u, dirEntry));
@@ -641,7 +813,7 @@
                 }
             }
 
-            return { projectsMissingFromDirectory, projectsWithUnknownUsers };
+            return { projectsMissingFromDirectory, projectsWithUnknownUsers, projectsMissingEmailDetails };
         }
 
         function escapeHtmlBannerText(text) {
@@ -653,18 +825,26 @@
         }
 
         function renderDirectoryMismatchBanner(mismatches) {
-            const { projectsMissingFromDirectory, projectsWithUnknownUsers } = mismatches;
-            if (projectsMissingFromDirectory.length === 0 && projectsWithUnknownUsers.length === 0) {
+            const { projectsMissingFromDirectory, projectsWithUnknownUsers, projectsMissingEmailDetails } = mismatches;
+            if (projectsMissingFromDirectory.length === 0 && projectsWithUnknownUsers.length === 0 && projectsMissingEmailDetails.length === 0) {
                 return '';
             }
 
             let bodyHtml = '';
             if (projectsMissingFromDirectory.length > 0) {
                 bodyHtml +=
-                    '<div class="mb-4"><p class="font-semibold text-amber-900 mb-2">Project(s) not in PROJECT_CLIENT_DIRECTORY</p><ul class="list-disc list-inside text-sm text-amber-900 space-y-3">';
+                    '<div class="mb-4"><p class="font-semibold text-amber-900 mb-2">New project(s)</p><ul class="list-disc list-inside text-sm text-amber-900 space-y-3">';
                 for (const p of projectsMissingFromDirectory) {
                     const users = p.usersInTimesheet.map(escapeHtmlBannerText).join(', ');
-                    bodyHtml += `<li><span class="font-medium">${escapeHtmlBannerText(p.excelProjectName)}</span> — add this project in <code class="bg-amber-100 px-1 rounded text-xs">index.html</code>. Users in file: ${users || '(none)'}</li>`;
+                    bodyHtml += `<li><span class="font-medium">${escapeHtmlBannerText(p.excelProjectName)}</span> — users in file: ${users || '(none)'}</li>`;
+                }
+                bodyHtml += '</ul></div>';
+            }
+            if (projectsMissingEmailDetails.length > 0) {
+                bodyHtml +=
+                    '<div class="mb-4"><p class="font-semibold text-amber-900 mb-2">Email information needed</p><ul class="list-disc list-inside text-sm text-amber-900 space-y-2">';
+                for (const p of projectsMissingEmailDetails) {
+                    bodyHtml += `<li><span class="font-medium">${escapeHtmlBannerText(p.directoryProjectName)}</span>: ${escapeHtmlBannerText(p.missingFields.join(', '))}</li>`;
                 }
                 bodyHtml += '</ul></div>';
             }
@@ -683,32 +863,16 @@
                     <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                         <div class="flex-1 min-w-0">
                             <h3 class="text-lg font-semibold text-amber-900 mb-2">Directory check — review needed</h3>
-                            <p class="text-sm text-amber-800 mb-3">Update <code class="bg-amber-100 px-1 rounded text-xs">PROJECT_CLIENT_DIRECTORY</code> in <code class="bg-amber-100 px-1 rounded text-xs">index.html</code>. Projects align by <strong>Project ID</strong> (see <code class="bg-amber-100 px-1 rounded text-xs">PROJECT_ID_TO_DISPLAY_NAME</code>), name, or fuzzy match. Resource names can be <strong>first name only</strong> in the directory; they still match Excel full names like &quot;Hetvi Shah&quot;.</p>
+                            <p class="text-sm text-amber-800 mb-3">Add the missing contact and resource information to create complete, addressed email drafts. Saved details stay in this browser and apply to future uploads.</p>
                             ${bodyHtml}
                         </div>
-                        <button type="button" id="directoryMismatchDismiss" class="flex-shrink-0 px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-medium hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2">Got it</button>
+                        <div class="flex flex-shrink-0 flex-col gap-2">
+                            <button type="button" id="directoryMismatchUpdate" class="px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-medium hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2">Add / update details</button>
+                            <button type="button" id="directoryMismatchDismiss" class="px-4 py-2 rounded-lg border border-amber-400 text-amber-900 text-sm font-medium hover:bg-amber-100">Later</button>
+                        </div>
                     </div>
                 </div>
             `;
-        }
-
-        function formatDirectoryMismatchAlert(mismatches) {
-            const lines = [
-                'Timesheet vs directory: some rows are not covered by PROJECT_CLIENT_DIRECTORY.',
-                '',
-                'Fix index.html, then re-upload.',
-                ''
-            ];
-            for (const p of mismatches.projectsMissingFromDirectory) {
-                lines.push(`Project not in directory: "${p.excelProjectName}"`);
-                lines.push(`  Users in file: ${p.usersInTimesheet.join(', ') || '(none)'}`);
-                lines.push('');
-            }
-            for (const p of mismatches.projectsWithUnknownUsers) {
-                lines.push(`Unknown users under "${p.excelProjectName}": ${p.unknownUsers.join(', ')}`);
-                lines.push('');
-            }
-            return lines.join('\n');
         }
 
         // --- Library Loading Check ---
@@ -801,6 +965,217 @@
             const tabEmailsBtn = document.getElementById('tabEmailsBtn');
             const emailDraftsEmpty = document.getElementById('emailDraftsEmpty');
             const emailDraftsList = document.getElementById('emailDraftsList');
+            const manageDirectoryButton = document.getElementById('manageDirectoryButton');
+            const directoryModal = document.getElementById('directoryModal');
+            const closeDirectoryModal = document.getElementById('closeDirectoryModal');
+            const cancelDirectoryEdit = document.getElementById('cancelDirectoryEdit');
+            const directoryForm = document.getElementById('directoryForm');
+            const directoryProjectSelect = document.getElementById('directoryProjectSelect');
+            const directoryModalMessage = document.getElementById('directoryModalMessage');
+            const directoryProjectName = document.getElementById('directoryProjectName');
+            const directoryProjectId = document.getElementById('directoryProjectId');
+            const directoryClientPoc = document.getElementById('directoryClientPoc');
+            const directoryClientEmail = document.getElementById('directoryClientEmail');
+            const directoryCcEmails = document.getElementById('directoryCcEmails');
+            const directoryAliases = document.getElementById('directoryAliases');
+            const directoryResources = document.getElementById('directoryResources');
+            const addDirectoryResource = document.getElementById('addDirectoryResource');
+            const directoryFormStatus = document.getElementById('directoryFormStatus');
+            let lastUploadedFile = null;
+            let pendingDirectorySeed = null;
+
+            const showDirectoryStatus = (message, isError = false) => {
+                directoryFormStatus.textContent = message;
+                directoryFormStatus.className = isError
+                    ? 'rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800'
+                    : 'rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800';
+            };
+
+            const addResourceEditorRow = (resource = {}) => {
+                const row = document.createElement('div');
+                row.className = 'grid grid-cols-1 gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3 sm:grid-cols-[1fr_1fr_auto]';
+
+                const nameInput = document.createElement('input');
+                nameInput.className = 'directory-resource-name rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200';
+                nameInput.placeholder = 'Resource name';
+                nameInput.value = String(resource.name || '');
+                nameInput.required = true;
+
+                const roleInput = document.createElement('input');
+                roleInput.className = 'directory-resource-role rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200';
+                roleInput.placeholder = 'Role used in email table';
+                roleInput.value = String(resource.role || '');
+                roleInput.required = true;
+
+                const removeButton = document.createElement('button');
+                removeButton.type = 'button';
+                removeButton.className = 'rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50';
+                removeButton.textContent = 'Remove';
+                removeButton.addEventListener('click', () => row.remove());
+
+                row.append(nameInput, roleInput, removeButton);
+                directoryResources.appendChild(row);
+            };
+
+            const setDirectoryEditorEntry = (entry = {}, extraUsers = []) => {
+                directoryProjectName.value = entry.projectName || '';
+                directoryProjectId.value = entry.projectId || '';
+                directoryClientPoc.value = entry.clientPoc || '';
+                directoryClientEmail.value = entry.clientEmail || '';
+                directoryCcEmails.value = (entry.ccEmails || []).join(', ');
+                directoryAliases.value = (entry.excelAliases || []).join(', ');
+                directoryResources.textContent = '';
+
+                const resources = (entry.resources || []).map((resource) => ({ ...resource }));
+                for (const user of extraUsers) {
+                    if (!resources.some((resource) => directoryResourceNameMatchesExcelUser(resource.name, user))) {
+                        resources.push({ name: user, role: '' });
+                    }
+                }
+                resources.forEach(addResourceEditorRow);
+                if (resources.length === 0) addResourceEditorRow();
+                directoryFormStatus.classList.add('hidden');
+            };
+
+            const populateDirectoryProjectSelect = (selectedIndex = 'new') => {
+                directoryProjectSelect.textContent = '';
+                const newOption = document.createElement('option');
+                newOption.value = 'new';
+                newOption.textContent = '+ Add a new project';
+                directoryProjectSelect.appendChild(newOption);
+                PROJECT_CLIENT_DIRECTORY.forEach((entry, index) => {
+                    const option = document.createElement('option');
+                    option.value = String(index);
+                    option.textContent = entry.projectId
+                        ? `${entry.projectId} — ${entry.projectName}`
+                        : entry.projectName;
+                    directoryProjectSelect.appendChild(option);
+                });
+                directoryProjectSelect.value = String(selectedIndex);
+            };
+
+            const closeDirectoryEditor = () => {
+                directoryModal.classList.add('hidden');
+                document.body.classList.remove('overflow-hidden');
+                pendingDirectorySeed = null;
+            };
+
+            const openDirectoryEditor = (seed = null) => {
+                pendingDirectorySeed = seed;
+                let selectedIndex = 'new';
+                let entry = {};
+                let extraUsers = seed?.users || [];
+
+                if (seed?.directoryProjectName) {
+                    const index = PROJECT_CLIENT_DIRECTORY.findIndex(
+                        (candidate) => normalizeDirectoryString(candidate.projectName) === normalizeDirectoryString(seed.directoryProjectName)
+                    );
+                    if (index >= 0) {
+                        selectedIndex = String(index);
+                        entry = PROJECT_CLIENT_DIRECTORY[index];
+                    }
+                } else if (seed?.projectName) {
+                    entry = {
+                        projectName: seed.projectName,
+                        projectId: seed.projectId || '',
+                        excelAliases: [seed.projectName],
+                        resources: []
+                    };
+                } else if (PROJECT_CLIENT_DIRECTORY.length > 0) {
+                    selectedIndex = '0';
+                    entry = PROJECT_CLIENT_DIRECTORY[0];
+                }
+
+                populateDirectoryProjectSelect(selectedIndex);
+                setDirectoryEditorEntry(entry, extraUsers);
+                directoryModalMessage.textContent = seed
+                    ? 'Please complete the highlighted project details so addressed email drafts can be generated.'
+                    : 'Select a project to update, or add a new one.';
+                directoryModal.classList.remove('hidden');
+                document.body.classList.add('overflow-hidden');
+                setTimeout(() => directoryProjectName.focus(), 0);
+            };
+
+            const getFirstDirectorySeed = (mismatches) => {
+                const missingProject = mismatches.projectsMissingFromDirectory[0];
+                if (missingProject) {
+                    return {
+                        projectName: missingProject.excelProjectName,
+                        projectId: missingProject.projectId,
+                        users: missingProject.usersInTimesheet
+                    };
+                }
+                const unknownUsers = mismatches.projectsWithUnknownUsers[0];
+                if (unknownUsers) {
+                    return {
+                        directoryProjectName: unknownUsers.directoryProjectName,
+                        users: unknownUsers.unknownUsers
+                    };
+                }
+                const missingEmail = mismatches.projectsMissingEmailDetails[0];
+                if (missingEmail) return { directoryProjectName: missingEmail.directoryProjectName, users: [] };
+                return null;
+            };
+
+            directoryProjectSelect.addEventListener('change', () => {
+                pendingDirectorySeed = null;
+                if (directoryProjectSelect.value === 'new') {
+                    setDirectoryEditorEntry({});
+                    return;
+                }
+                setDirectoryEditorEntry(PROJECT_CLIENT_DIRECTORY[Number(directoryProjectSelect.value)] || {});
+            });
+            addDirectoryResource.addEventListener('click', () => addResourceEditorRow());
+            manageDirectoryButton.addEventListener('click', () => openDirectoryEditor());
+            closeDirectoryModal.addEventListener('click', closeDirectoryEditor);
+            cancelDirectoryEdit.addEventListener('click', closeDirectoryEditor);
+            directoryModal.addEventListener('click', (event) => {
+                if (event.target === directoryModal) closeDirectoryEditor();
+            });
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape' && !directoryModal.classList.contains('hidden')) closeDirectoryEditor();
+            });
+
+            directoryForm.addEventListener('submit', (event) => {
+                event.preventDefault();
+                const resources = Array.from(directoryResources.children).map((row) => ({
+                    name: row.querySelector('.directory-resource-name').value.trim(),
+                    role: row.querySelector('.directory-resource-role').value.trim()
+                })).filter((resource) => resource.name);
+                const entry = sanitizeDirectoryEntry({
+                    projectName: directoryProjectName.value,
+                    projectId: directoryProjectId.value,
+                    clientPoc: directoryClientPoc.value,
+                    clientEmail: directoryClientEmail.value,
+                    ccEmails: directoryCcEmails.value,
+                    excelAliases: directoryAliases.value,
+                    resources
+                });
+                const editingIndex = directoryProjectSelect.value === 'new'
+                    ? -1
+                    : Number(directoryProjectSelect.value);
+                const duplicateIndex = PROJECT_CLIENT_DIRECTORY.findIndex(
+                    (candidate, index) => index !== editingIndex &&
+                        normalizeDirectoryString(candidate.projectName) === normalizeDirectoryString(entry.projectName)
+                );
+                if (duplicateIndex >= 0) {
+                    showDirectoryStatus('A project with this display name already exists.', true);
+                    return;
+                }
+                try {
+                    if (editingIndex >= 0) PROJECT_CLIENT_DIRECTORY[editingIndex] = entry;
+                    else PROJECT_CLIENT_DIRECTORY.push(entry);
+                    saveProjectClientDirectory();
+                    showDirectoryStatus('Project details saved. Refreshing the current audit…');
+                    const fileToRefresh = lastUploadedFile;
+                    setTimeout(() => {
+                        closeDirectoryEditor();
+                        if (fileToRefresh) processFile(fileToRefresh, false);
+                    }, 350);
+                } catch (error) {
+                    showDirectoryStatus(`Could not save directory details: ${error.message}`, true);
+                }
+            });
 
             // --- Utility Functions ---
 
@@ -989,6 +1364,48 @@
                 </div>`;
             };
 
+            /**
+             * Recalculates every derived field on a draft (table HTML, email HTML/plain body,
+             * Gmail link) from its current `resourceRows`. Called on creation and after every
+             * inline edit, so the draft object always reflects the resource table it's showing.
+             */
+            const recomputeDraftDerived = (draft) => {
+                let totalHours = 0;
+                for (const row of draft.resourceRows) {
+                    row.hours = parseFloatSafe(row.hours);
+                    row.days = row.hours / 8;
+                    totalHours += row.hours;
+                }
+
+                const tableHtml = buildResourceSummaryTableHtml(draft.resourceRows, totalHours);
+                const bodyHtml = buildEmailHtmlBody(draft.clientPoc, draft.projectName, draft.bodyPeriodLabel, tableHtml);
+
+                let bodyPlain = `Hi ${draft.clientPoc},\n\n`;
+                bodyPlain += `Please find our timesheet submission for the ${draft.projectName}, covering the period of ${draft.bodyPeriodLabel}.\n\n`;
+                bodyPlain += `Resource Summary\n`;
+                bodyPlain += `User\tRole\tTotal Hours\tTotal Days (8h = 1 day)\n`;
+                for (const row of draft.resourceRows) {
+                    bodyPlain += `${row.displayName}\t${row.role}\t${row.hours.toFixed(2)}\t${row.days.toFixed(2)}\n`;
+                }
+                bodyPlain += `Total\t\t${totalHours.toFixed(2)}\t${(totalHours / 8).toFixed(2)}\n\n`;
+                bodyPlain += `The detailed timesheet is attached for your review and approval.\n`;
+
+                const gmailQueryParts = ['view=cm', 'fs=1'];
+                if (draft.clientEmail) gmailQueryParts.push(`to=${encodeURIComponent(draft.clientEmail)}`);
+                if ((draft.ccEmails || []).length > 0) {
+                    gmailQueryParts.push(`cc=${encodeURIComponent(draft.ccEmails.join(','))}`);
+                }
+                gmailQueryParts.push(`su=${encodeURIComponent(draft.subject)}`);
+                gmailQueryParts.push(`body=${encodeURIComponent(bodyPlain)}`);
+                const gmailUrl = `https://mail.google.com/mail/?${gmailQueryParts.join('&')}`;
+
+                draft.totalHours = totalHours;
+                draft.bodyHtml = bodyHtml;
+                draft.bodyPlain = bodyPlain;
+                draft.gmailUrl = gmailUrl;
+                draft.gmailUrlTooLong = gmailUrl.length > GMAIL_COMPOSE_URL_MAX;
+            };
+
             const buildEmailDrafts = (jsonData, projectSummaries) => {
                 const drafts = [];
 
@@ -1000,59 +1417,46 @@
                     if (!min || !max) continue;
 
                     const bodyPeriodLabel = formatBodyPeriodOrdinal(min, max);
-                    const subject = `${dirEntry.projectName} - Monthly Timesheet - ${formatSubjectMonthYear(max)}`;
+                    const monthYearLabel = formatSubjectMonthYear(max);
+                    const subject = `${dirEntry.projectName} - Monthly Timesheet - ${monthYearLabel}`;
 
-                    const resourceRows = [];
-                    let totalHours = 0;
-
-                    for (const r of dirEntry.resources || []) {
+                    // Every directory resource for this project gets a row, even with 0 hours
+                    // this month — the client sees who's staffed, not just who logged time.
+                    const defaultResourceRows = (dirEntry.resources || []).map((r) => {
                         const key = findUserKeyInMap(userMap, r.name);
-                        if (!key) continue;
-                        const summ = userMap.get(key);
-                        const hours = summ.totalClientHours;
-                        if (hours <= 0) continue;
-                        resourceRows.push({
-                            displayName: r.name,
-                            role: r.role,
-                            hours,
-                            days: hours / 8
-                        });
-                        totalHours += hours;
-                    }
+                        const hours = key ? userMap.get(key).totalClientHours : 0;
+                        return { displayName: r.name, role: r.role, hours, days: hours / 8 };
+                    });
 
-                    if (resourceRows.length === 0) continue;
+                    // A manually-edited table for this project + month, saved earlier in this
+                    // browser, takes precedence over the freshly-computed rows above.
+                    const draftKey = getEmailDraftKey(dirEntry.projectName, monthYearLabel);
+                    const savedOverride = EMAIL_DRAFT_OVERRIDES[draftKey];
+                    const hasOverride = Array.isArray(savedOverride);
+                    const resourceRows = hasOverride
+                        ? savedOverride.map((r) => ({
+                            displayName: String(r?.displayName || ''),
+                            role: String(r?.role || ''),
+                            hours: parseFloatSafe(r?.hours),
+                            days: parseFloatSafe(r?.hours) / 8
+                        }))
+                        : defaultResourceRows.map((r) => ({ ...r }));
 
-                    const tableHtml = buildResourceSummaryTableHtml(resourceRows, totalHours);
-                    const bodyHtml = buildEmailHtmlBody(
-                        dirEntry.clientPoc,
-                        dirEntry.projectName,
-                        bodyPeriodLabel,
-                        tableHtml
-                    );
-
-                    let bodyPlain = `Hi ${dirEntry.clientPoc},\n\n`;
-                    bodyPlain += `Please find our timesheet submission for the ${dirEntry.projectName}, covering the period of ${bodyPeriodLabel}.\n\n`;
-                    bodyPlain += `Resource Summary\n`;
-                    bodyPlain += `User\tRole\tTotal Hours\tTotal Days (8h = 1 day)\n`;
-                    for (const row of resourceRows) {
-                        bodyPlain += `${row.displayName}\t${row.role}\t${row.hours.toFixed(2)}\t${row.days.toFixed(2)}\n`;
-                    }
-                    bodyPlain += `Total\t\t${totalHours.toFixed(2)}\t${(totalHours / 8).toFixed(2)}\n\n`;
-                    bodyPlain += `The detailed timesheet is attached for your review and approval.\n`;
-
-                    const gmailQuery = `view=cm&fs=1&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyPlain)}`;
-                    const gmailUrl = `https://mail.google.com/mail/?${gmailQuery}`;
-
-                    drafts.push({
+                    const draft = {
                         projectName: dirEntry.projectName,
                         excelProjectName: excelProject,
                         clientPoc: dirEntry.clientPoc,
+                        clientEmail: dirEntry.clientEmail || '',
+                        ccEmails: dirEntry.ccEmails || [],
+                        bodyPeriodLabel,
                         subject,
-                        bodyPlain,
-                        bodyHtml,
-                        gmailUrl,
-                        gmailUrlTooLong: gmailUrl.length > GMAIL_COMPOSE_URL_MAX
-                    });
+                        draftKey,
+                        defaultResourceRows,
+                        resourceRows,
+                        hasOverride
+                    };
+                    recomputeDraftDerived(draft);
+                    drafts.push(draft);
                 }
 
                 drafts.sort((a, b) => a.projectName.localeCompare(b.projectName));
@@ -1125,7 +1529,7 @@
                     msg.appendChild(code);
                     msg.appendChild(
                         document.createTextNode(
-                            ' gets its own draft below, as long as at least one directory resource appears in the timesheet for that project.'
+                            ' gets its own draft below, as long as the project appears in the timesheet and matches a directory entry.'
                         )
                     );
                     emailDraftsEmpty.appendChild(msg);
@@ -1143,7 +1547,7 @@
                 summaryBar.appendChild(s1);
                 summaryBar.appendChild(
                     document.createTextNode(
-                        ' email draft(s) — one card per project (directory match + at least one listed resource in the file). Subject is '
+                        ' email draft(s) — one card per project with a directory match. Every resource listed for the project appears in the table, with 0.00 hours if they didn’t log time that month. Subject is '
                     )
                 );
                 const sm = document.createElement('strong');
@@ -1151,7 +1555,15 @@
                 summaryBar.appendChild(sm);
                 summaryBar.appendChild(
                     document.createTextNode(
-                        ' (from the latest date in the file for that project). The body period runs from the 1st of the earliest month through the last day of the latest month, with ordinal dates (e.g. February 1st to February 28th, 2026). Use '
+                        ' (from the latest date in the file for that project). The body period runs from the 1st of the earliest month through the last day of the latest month, with ordinal dates (e.g. February 1st to February 28th, 2026). '
+                    )
+                );
+                const s3 = document.createElement('strong');
+                s3.textContent = 'The resource table below is editable';
+                summaryBar.appendChild(s3);
+                summaryBar.appendChild(
+                    document.createTextNode(
+                        ' — add or remove rows and edit names, roles, or hours; the subject, body, and Gmail link update automatically. Use '
                     )
                 );
                 const s2 = document.createElement('strong');
@@ -1182,8 +1594,16 @@
                     const projLine = document.createElement('p');
                     projLine.className = 'mt-1 text-sm text-gray-600';
                     projLine.textContent = `${draft.projectName} · POC: ${draft.clientPoc}`;
+                    const recipientLine = document.createElement('p');
+                    recipientLine.className = draft.clientEmail
+                        ? 'mt-1 text-sm text-gray-600'
+                        : 'mt-1 text-sm font-medium text-amber-700';
+                    recipientLine.textContent = draft.clientEmail
+                        ? `To: ${draft.clientEmail}${draft.ccEmails.length ? ` · CC: ${draft.ccEmails.join(', ')}` : ''}`
+                        : 'To: not provided — update the project directory';
                     titleBlock.appendChild(h3);
                     titleBlock.appendChild(projLine);
+                    titleBlock.appendChild(recipientLine);
 
                     const gmailBtn = document.createElement('button');
                     gmailBtn.type = 'button';
@@ -1195,7 +1615,11 @@
                             window.open(draft.gmailUrl, '_blank', 'noopener,noreferrer');
                             return;
                         }
-                        const shortUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(draft.subject)}`;
+                        const shortParts = ['view=cm', 'fs=1'];
+                        if (draft.clientEmail) shortParts.push(`to=${encodeURIComponent(draft.clientEmail)}`);
+                        if (draft.ccEmails.length) shortParts.push(`cc=${encodeURIComponent(draft.ccEmails.join(','))}`);
+                        shortParts.push(`su=${encodeURIComponent(draft.subject)}`);
+                        const shortUrl = `https://mail.google.com/mail/?${shortParts.join('&')}`;
                         window.open(shortUrl, '_blank', 'noopener,noreferrer');
                     });
 
@@ -1203,13 +1627,13 @@
                     topRow.appendChild(gmailBtn);
                     box.appendChild(topRow);
 
-                    if (draft.gmailUrlTooLong) {
-                        const gmailNote = document.createElement('p');
-                        gmailNote.className = 'mb-4 text-xs text-amber-700';
-                        gmailNote.textContent =
-                            'Gmail link is too long to include the full body; compose opens with the subject only. Use Copy Body Table for Gmail for the full message.';
-                        box.appendChild(gmailNote);
-                    }
+                    const gmailNote = document.createElement('p');
+                    gmailNote.className = 'mb-4 text-xs text-amber-700 hidden';
+                    gmailNote.textContent =
+                        'Gmail link is too long to include the full body; compose opens with the subject only. Use Copy Body Table for Gmail for the full message.';
+                    box.appendChild(gmailNote);
+                    const syncGmailNote = () => gmailNote.classList.toggle('hidden', !draft.gmailUrlTooLong);
+                    syncGmailNote();
 
                     const subjectBlock = document.createElement('div');
                     subjectBlock.className = 'mb-6';
@@ -1279,7 +1703,192 @@
                     const bodyPreview = document.createElement('div');
                     bodyPreview.className =
                         'rounded-md border border-gray-200 bg-white p-4 font-sans text-sm leading-relaxed text-black overflow-x-auto';
-                    bodyPreview.innerHTML = draft.bodyHtml;
+
+                    const greetingP = document.createElement('p');
+                    greetingP.className = 'mb-3';
+                    greetingP.textContent = `Hi ${draft.clientPoc},`;
+
+                    const introP = document.createElement('p');
+                    introP.className = 'mb-4';
+                    introP.appendChild(document.createTextNode('Please find our timesheet submission for the '));
+                    const introProjStrong = document.createElement('strong');
+                    introProjStrong.textContent = draft.projectName;
+                    introP.appendChild(introProjStrong);
+                    introP.appendChild(document.createTextNode(', covering the period of '));
+                    const introPeriodStrong = document.createElement('strong');
+                    introPeriodStrong.textContent = draft.bodyPeriodLabel;
+                    introP.appendChild(introPeriodStrong);
+                    introP.appendChild(document.createTextNode('.'));
+
+                    const summaryLabel = document.createElement('p');
+                    summaryLabel.className = 'mb-1 font-bold text-black';
+                    summaryLabel.textContent = 'Resource Summary';
+
+                    const editHintRow = document.createElement('div');
+                    editHintRow.className = 'mb-2 flex flex-wrap items-center justify-between gap-2';
+                    const editHint = document.createElement('p');
+                    editHint.className = 'text-xs text-gray-500';
+                    editHint.textContent =
+                        'Editable — change names, roles, or hours, or add/remove rows. Edits are saved in this browser and update the subject, body, and Gmail link automatically.';
+                    const resetBtn = document.createElement('button');
+                    resetBtn.type = 'button';
+                    resetBtn.className =
+                        'rounded-md border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50';
+                    resetBtn.textContent = 'Reset to timesheet data';
+                    resetBtn.classList.toggle('hidden', !draft.hasOverride);
+                    editHintRow.append(editHint, resetBtn);
+
+                    const table = document.createElement('table');
+                    table.className = 'w-full border-collapse text-sm mb-3';
+
+                    const thead = document.createElement('thead');
+                    thead.innerHTML = `<tr>
+                        <th class="border border-gray-300 bg-gray-100 px-2 py-1.5 text-left font-semibold">User</th>
+                        <th class="border border-gray-300 bg-gray-100 px-2 py-1.5 text-left font-semibold">Role</th>
+                        <th class="border border-gray-300 bg-gray-100 px-2 py-1.5 text-right font-semibold">Total Hours</th>
+                        <th class="border border-gray-300 bg-gray-100 px-2 py-1.5 text-right font-semibold">Total Days</th>
+                        <th class="border border-gray-300 bg-gray-100 px-2 py-1.5"></th>
+                    </tr>`;
+                    table.appendChild(thead);
+
+                    const tbody = document.createElement('tbody');
+                    table.appendChild(tbody);
+
+                    const tfoot = document.createElement('tfoot');
+                    const totalRow = document.createElement('tr');
+                    totalRow.innerHTML =
+                        '<td colspan="2" class="border border-gray-300 bg-gray-50 px-2 py-1.5 text-right font-semibold">Total</td>';
+                    const totalHoursCell = document.createElement('td');
+                    totalHoursCell.className = 'border border-gray-300 bg-gray-50 px-2 py-1.5 text-right font-semibold';
+                    const totalDaysCell = document.createElement('td');
+                    totalDaysCell.className = 'border border-gray-300 bg-gray-50 px-2 py-1.5 text-right font-semibold';
+                    const totalBlankCell = document.createElement('td');
+                    totalBlankCell.className = 'border border-gray-300 bg-gray-50';
+                    totalRow.append(totalHoursCell, totalDaysCell, totalBlankCell);
+                    tfoot.appendChild(totalRow);
+                    table.appendChild(tfoot);
+
+                    const refreshDerived = () => {
+                        recomputeDraftDerived(draft);
+                        totalHoursCell.textContent = draft.totalHours.toFixed(2);
+                        totalDaysCell.textContent = (draft.totalHours / 8).toFixed(2);
+                        syncGmailNote();
+                    };
+
+                    // Called after a real user edit: recompute the email content AND save the
+                    // edited rows to localStorage so they survive a re-upload or directory save.
+                    const commitChange = () => {
+                        refreshDerived();
+                        draft.hasOverride = true;
+                        EMAIL_DRAFT_OVERRIDES[draft.draftKey] = draft.resourceRows.map((row) => ({
+                            displayName: row.displayName,
+                            role: row.role,
+                            hours: row.hours
+                        }));
+                        saveEmailDraftOverrides();
+                        resetBtn.classList.remove('hidden');
+                    };
+
+                    const renderRows = () => {
+                        tbody.textContent = '';
+                        draft.resourceRows.forEach((row, rowIndex) => {
+                            const tr = document.createElement('tr');
+
+                            const nameTd = document.createElement('td');
+                            nameTd.className = 'border border-gray-300 p-1';
+                            const nameInput = document.createElement('input');
+                            nameInput.type = 'text';
+                            nameInput.value = row.displayName;
+                            nameInput.placeholder = 'Name';
+                            nameInput.className =
+                                'w-full rounded border-0 bg-transparent px-1 py-1 focus:bg-indigo-50 focus:outline-none';
+                            nameInput.addEventListener('input', () => {
+                                row.displayName = nameInput.value;
+                                commitChange();
+                            });
+                            nameTd.appendChild(nameInput);
+
+                            const roleTd = document.createElement('td');
+                            roleTd.className = 'border border-gray-300 p-1';
+                            const roleInput = document.createElement('input');
+                            roleInput.type = 'text';
+                            roleInput.value = row.role;
+                            roleInput.placeholder = 'Role';
+                            roleInput.className =
+                                'w-full rounded border-0 bg-transparent px-1 py-1 focus:bg-indigo-50 focus:outline-none';
+                            roleInput.addEventListener('input', () => {
+                                row.role = roleInput.value;
+                                commitChange();
+                            });
+                            roleTd.appendChild(roleInput);
+
+                            const hoursTd = document.createElement('td');
+                            hoursTd.className = 'border border-gray-300 p-1';
+                            const hoursInput = document.createElement('input');
+                            hoursInput.type = 'number';
+                            hoursInput.step = '0.25';
+                            hoursInput.min = '0';
+                            hoursInput.value = row.hours.toFixed(2);
+                            hoursInput.className =
+                                'w-full rounded border-0 bg-transparent px-1 py-1 text-right focus:bg-indigo-50 focus:outline-none';
+                            hoursInput.addEventListener('input', () => {
+                                row.hours = parseFloatSafe(hoursInput.value);
+                                daysCell.textContent = (row.hours / 8).toFixed(2);
+                                commitChange();
+                            });
+                            hoursTd.appendChild(hoursInput);
+
+                            const daysCell = document.createElement('td');
+                            daysCell.className = 'border border-gray-300 px-2 py-1.5 text-right text-gray-600';
+                            daysCell.textContent = row.days.toFixed(2);
+
+                            const removeTd = document.createElement('td');
+                            removeTd.className = 'border border-gray-300 px-1 py-1 text-center';
+                            const removeBtn = document.createElement('button');
+                            removeBtn.type = 'button';
+                            removeBtn.className = 'text-red-600 hover:text-red-800 text-xs font-semibold';
+                            removeBtn.textContent = 'Remove';
+                            removeBtn.addEventListener('click', () => {
+                                draft.resourceRows.splice(rowIndex, 1);
+                                renderRows();
+                                commitChange();
+                            });
+                            removeTd.appendChild(removeBtn);
+
+                            tr.append(nameTd, roleTd, hoursTd, daysCell, removeTd);
+                            tbody.appendChild(tr);
+                        });
+                    };
+
+                    renderRows();
+                    refreshDerived();
+
+                    const addRowBtn = document.createElement('button');
+                    addRowBtn.type = 'button';
+                    addRowBtn.className =
+                        'mb-4 rounded-md border border-indigo-300 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-50';
+                    addRowBtn.textContent = '+ Add resource';
+                    addRowBtn.addEventListener('click', () => {
+                        draft.resourceRows.push({ displayName: '', role: '', hours: 0, days: 0 });
+                        renderRows();
+                        commitChange();
+                    });
+
+                    resetBtn.addEventListener('click', () => {
+                        draft.resourceRows = draft.defaultResourceRows.map((r) => ({ ...r }));
+                        draft.hasOverride = false;
+                        delete EMAIL_DRAFT_OVERRIDES[draft.draftKey];
+                        saveEmailDraftOverrides();
+                        renderRows();
+                        refreshDerived();
+                        resetBtn.classList.add('hidden');
+                    });
+
+                    const closingP = document.createElement('p');
+                    closingP.className = 'mt-2';
+                    closingP.textContent = 'The detailed timesheet is attached for your review and approval.';
+
+                    bodyPreview.append(greetingP, introP, summaryLabel, editHintRow, table, addRowBtn, closingP);
 
                     copyBodyBtn.addEventListener('click', async () => {
                         const ok = await copyHtmlAndPlainToClipboard(draft.bodyHtml, draft.bodyPlain);
@@ -1543,13 +2152,13 @@
                 let tableRowsHTML = '';
                 for (const entry of allEntries) {
                     const projectDisplay = entry.projectId
-                        ? `${entry.projectId} - ${entry.projectName}`
-                        : entry.projectName;
+                        ? `${escapeHtmlBannerText(entry.projectId)} - ${escapeHtmlBannerText(entry.projectName)}`
+                        : escapeHtmlBannerText(entry.projectName);
 
                     tableRowsHTML += `
                         <tr class="hover:bg-gray-50">
                             <td class="px-6 py-3 text-sm font-medium text-gray-900">${projectDisplay}</td>
-                            <td class="px-6 py-3 text-sm text-gray-700">${entry.userName}</td>
+                            <td class="px-6 py-3 text-sm text-gray-700">${escapeHtmlBannerText(entry.userName)}</td>
                             <td class="px-6 py-3 text-sm text-gray-700 text-right">${entry.totalHours.toFixed(2)}</td>
                             <td class="px-6 py-3 text-sm text-gray-700 text-right">${entry.totalDays.toFixed(2)}</td>
                         </tr>
@@ -1617,7 +2226,7 @@
                     for (const summary of sortedUsers) {
                         tableRowsHTML += `
                             <tr>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">${summary.user}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">${escapeHtmlBannerText(summary.user)}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-medium">${summary.totalClientHours.toFixed(2)}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-medium">${(summary.totalClientHours / 8).toFixed(2)}</td>
                                 <td class="px-6 py-4 text-sm text-gray-600">${formatDateList(summary.leaveDates)}</td>
@@ -1635,7 +2244,7 @@
                                     <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
                                     </svg>
-                                    Project: ${project}
+                                    Project: ${escapeHtmlBannerText(project)}
                                 </h2>
                                 <p class="text-blue-100 text-sm mt-1">${sortedUsers.length} team member${sortedUsers.length !== 1 ? 's' : ''}</p>
                             </div>
@@ -1680,12 +2289,14 @@
 
             // --- File Processing ---
 
-            const processFile = (file) => {
+            const processFile = (file, shouldPromptForDirectory = true) => {
                 // Safety check: Ensure XLSX library is loaded
                 if (typeof XLSX === 'undefined') {
                     alert('Excel library is still loading. Please wait a moment and try again.');
                     return;
                 }
+
+                lastUploadedFile = file;
 
                 resultsContainer.innerHTML = '';
                 summaryStats.innerHTML = '';
@@ -1713,11 +2324,12 @@
 
                         const { projectSummaries, projectIds } = processTimesheetData(jsonData);
 
-                        const directoryMismatches = collectDirectoryMismatches(projectSummaries);
+                        const directoryMismatches = collectDirectoryMismatches(projectSummaries, projectIds);
                         const directoryBannerHtml = renderDirectoryMismatchBanner(directoryMismatches);
                         const hasDirectoryMismatch =
                             directoryMismatches.projectsMissingFromDirectory.length > 0 ||
-                            directoryMismatches.projectsWithUnknownUsers.length > 0;
+                            directoryMismatches.projectsWithUnknownUsers.length > 0 ||
+                            directoryMismatches.projectsMissingEmailDetails.length > 0;
 
                         summaryStats.innerHTML = generateSummaryStats(projectSummaries);
                         summaryStats.classList.remove('hidden');
@@ -1731,14 +2343,14 @@
 
                         addEventListenersToResults(projectSummaries, projectIds);
 
-                        if (hasDirectoryMismatch) {
-                            alert(formatDirectoryMismatchAlert(directoryMismatches));
-                        }
-
                         const emailDrafts = buildEmailDrafts(jsonData, projectSummaries);
                         renderEmailDraftsUI(emailDrafts);
                         mainTabs.classList.remove('hidden');
                         applyTabSelection(true);
+
+                        if (hasDirectoryMismatch && shouldPromptForDirectory) {
+                            openDirectoryEditor(getFirstDirectorySeed(directoryMismatches));
+                        }
 
                     } catch (error) {
                         resetEmailPanelToInitial();
@@ -1771,6 +2383,10 @@
             // --- Event Listeners ---
 
             const addEventListenersToResults = (projectSummaries, projectIds) => {
+                document.getElementById('directoryMismatchUpdate')?.addEventListener('click', () => {
+                    const mismatches = collectDirectoryMismatches(projectSummaries, projectIds);
+                    openDirectoryEditor(getFirstDirectorySeed(mismatches));
+                });
                 document.getElementById('directoryMismatchDismiss')?.addEventListener('click', () => {
                     document.getElementById('directoryMismatchBanner')?.remove();
                 });
@@ -1781,6 +2397,7 @@
                     summaryStats.classList.add('hidden');
                     actionButtons.classList.add('hidden');
                     fileInput.value = '';
+                    lastUploadedFile = null;
                     isProcessing = false; // Reset the processing flag
                     resetEmailPanelToInitial();
                 });
